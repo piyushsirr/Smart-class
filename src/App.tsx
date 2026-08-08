@@ -9,6 +9,8 @@ import 'tldraw/tldraw.css';
 import { Sidebar } from './components/Sidebar';
 import { BottomToolbar } from './components/BottomToolbar';
 import { SplashScreen, SplashSettings, DEFAULT_SPLASH_SETTINGS } from './components/SplashScreen';
+import { FloatingClockOverlay } from './components/FloatingClockOverlay';
+import { ClockProvider } from './context/ClockContext';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { 
   Menu, 
@@ -159,29 +161,33 @@ export default function App() {
 
   // 5 Important Core Functions attached to the Logo Radial Menu
   const logoTools = [
-    { id: 'select', name: 'Mover', icon: MousePointer2, color: 'from-blue-500 to-cyan-500', angle: 0 },
-    { id: 'draw', name: 'Pen', icon: Pen, color: 'from-emerald-400 to-teal-500', angle: 40 },
+    { id: 'draw', name: 'Pen', icon: Pen, color: 'from-emerald-400 to-teal-500', angle: 0 },
+    { id: 'select', name: 'Mover', icon: MousePointer2, color: 'from-blue-500 to-cyan-500', angle: 40 },
     { id: 'eraser', name: 'Eraser', icon: Eraser, color: 'from-rose-500 to-red-500', angle: 80 },
     { id: 'note', name: 'Sticky Note', icon: StickyNote, color: 'from-amber-400 to-orange-500', angle: 120 },
     { id: 'laser', name: 'Laser Pointer', icon: Zap, color: 'from-purple-500 to-indigo-500', angle: 160 },
   ];
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#121212] text-white font-sans">
-      
-      {/* Animated Startup Splash Screen */}
-      <AnimatePresence>
-        {showSplash && (
-          <SplashScreen
-            settings={splashSettings}
-            isPreview={isSplashPreview}
-            onComplete={() => {
-              setShowSplash(false);
-              setIsSplashPreview(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
+    <ClockProvider>
+      <div className="fixed inset-0 overflow-hidden bg-[#121212] text-white font-sans">
+        
+        {/* On-Screen Floating Timer and Stopwatch Widgets */}
+        <FloatingClockOverlay />
+
+        {/* Animated Startup Splash Screen */}
+        <AnimatePresence>
+          {showSplash && (
+            <SplashScreen
+              settings={splashSettings}
+              isPreview={isSplashPreview}
+              onComplete={() => {
+                setShowSplash(false);
+                setIsSplashPreview(false);
+              }}
+            />
+          )}
+        </AnimatePresence>
 
       {/* Main Canvas Area */}
       <div className="w-full h-full relative z-0">
@@ -339,6 +345,7 @@ export default function App() {
         onPreviewSplash={triggerSplashPreview}
       />
     </div>
+  </ClockProvider>
   );
 }
 

@@ -264,6 +264,368 @@ class StartupAudioManagerClass {
 
 export const StartupAudioManager = new StartupAudioManagerClass();
 
+// =========================================================================
+// ADVANCED INFINITY SYNC REAL-TIME AUDIO SYNTHESIZER
+// Continuously tracks progress from 0% to 100% as the infinity sign syncs
+// =========================================================================
+class InfinitySyncAudioEngineClass {
+  private ctx: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
+  private mainFilter: BiquadFilterNode | null = null;
+  private panner: StereoPannerNode | null = null;
+
+  // Oscillators
+  private baseOsc1: OscillatorNode | null = null;
+  private baseOsc2: OscillatorNode | null = null;
+  private carrierOsc: OscillatorNode | null = null;
+  private fmModulator: OscillatorNode | null = null;
+  private fmGain: GainNode | null = null;
+  private overtoneGain: GainNode | null = null;
+
+  private isRunning = false;
+  private isCompleted = false;
+  private targetVolume = 0.55;
+  private currentVolumePercent = 50;
+  private unlockListenerAttached = false;
+
+  public isAudioActive(): boolean {
+    return !!(this.ctx && this.ctx.state === 'running');
+  }
+
+  public async ensureResumed() {
+    if (!this.ctx) {
+      if (this.isRunning) {
+        this.startSyncSound(this.currentVolumePercent);
+      }
+      return;
+    }
+
+    try {
+      if (this.ctx.state === 'suspended') {
+        await this.ctx.resume();
+      }
+    } catch {
+      // silent
+    }
+
+    // Re-initialize AudioContext if suspended state persists
+    if (this.ctx.state === 'suspended' && this.isRunning) {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const freshCtx = new AudioCtx();
+          if (freshCtx.state === 'running') {
+            this.startSyncSound(this.currentVolumePercent);
+            return;
+          }
+        }
+      } catch {
+        // silent
+      }
+    }
+
+    if (this.masterGain && this.ctx && this.ctx.state === 'running') {
+      const now = this.ctx.currentTime;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.targetVolume, now);
+    }
+  }
+
+  private attachUnlockListeners() {
+    if (this.unlockListenerAttached) return;
+    this.unlockListenerAttached = true;
+
+    const unlockHandler = () => {
+      this.ensureResumed();
+    };
+
+    const events = [
+      'pointerdown', 'click', 'touchstart', 'keydown',
+      'pointermove', 'mousemove', 'mouseover', 'focus', 'wheel', 'scroll', 'mouseenter', 'load'
+    ];
+
+    events.forEach(evt => {
+      window.addEventListener(evt, unlockHandler, { capture: true, passive: true });
+      document.addEventListener(evt, unlockHandler, { capture: true, passive: true });
+    });
+
+    // Auto trigger immediately and after micro-delays
+    this.ensureResumed();
+    setTimeout(() => this.ensureResumed(), 50);
+    setTimeout(() => this.ensureResumed(), 200);
+    setTimeout(() => this.ensureResumed(), 600);
+  }
+
+  public startSyncSound(volumePercent: number = 50) {
+    this.currentVolumePercent = volumePercent;
+    if (this.isRunning && this.ctx) {
+      if (this.ctx.state === 'running') return;
+      this.stopSyncSound();
+    }
+
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      this.ctx = new AudioCtx();
+      this.attachUnlockListeners();
+
+      const now = this.ctx.currentTime;
+      this.isRunning = true;
+      this.isCompleted = false;
+
+      // Master volume curve optimized for speaker clarity
+      const clamped = Math.max(0, Math.min(100, volumePercent));
+      this.targetVolume = clamped === 0 ? 0 : Math.pow(clamped / 100, 1.1) * 0.65;
+
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(0.0001, now);
+      this.masterGain.gain.linearRampToValueAtTime(this.targetVolume, now + 0.08);
+
+      // Try immediate resume
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+
+      // Dynamics Compressor for clean, glued sound without clipping
+      const compressor = this.ctx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-12, now);
+      compressor.ratio.setValueAtTime(4, now);
+      compressor.attack.setValueAtTime(0.005, now);
+      compressor.release.setValueAtTime(0.2, now);
+
+      this.masterGain.connect(compressor);
+      compressor.connect(this.ctx.destination);
+
+      // Stereo Panner (Orbital figure-8 panning along infinity path)
+      if (typeof this.ctx.createStereoPanner === 'function') {
+        this.panner = this.ctx.createStereoPanner();
+        this.panner.pan.setValueAtTime(0, now);
+        this.panner.connect(this.masterGain);
+      }
+
+      // Filter: Lowpass starting at 480Hz (clear & audible on built-in speakers) sweeping to 6800Hz
+      this.mainFilter = this.ctx.createBiquadFilter();
+      this.mainFilter.type = 'lowpass';
+      this.mainFilter.frequency.setValueAtTime(480, now);
+      this.mainFilter.Q.setValueAtTime(1.8, now);
+
+      const outputNode = this.panner ? this.panner : this.masterGain;
+      this.mainFilter.connect(outputNode);
+
+      // Layer 1: Warm Audible Pad (C4: 261.63Hz & G4: 392.00Hz)
+      this.baseOsc1 = this.ctx.createOscillator();
+      this.baseOsc1.type = 'sine';
+      this.baseOsc1.frequency.setValueAtTime(261.63, now);
+
+      this.baseOsc2 = this.ctx.createOscillator();
+      this.baseOsc2.type = 'triangle';
+      this.baseOsc2.frequency.setValueAtTime(392.00, now);
+
+      const baseGain = this.ctx.createGain();
+      baseGain.gain.setValueAtTime(0.35, now);
+
+      this.baseOsc1.connect(baseGain);
+      this.baseOsc2.connect(baseGain);
+      baseGain.connect(this.mainFilter);
+
+      this.baseOsc1.start(now);
+      this.baseOsc2.start(now);
+
+      // Layer 2: FM Synth for Path Tracing & Energy Whirring (C5: 523.25Hz)
+      this.carrierOsc = this.ctx.createOscillator();
+      this.carrierOsc.type = 'sine';
+      this.carrierOsc.frequency.setValueAtTime(523.25, now); // C5
+
+      this.fmModulator = this.ctx.createOscillator();
+      this.fmModulator.type = 'sine';
+      this.fmModulator.frequency.setValueAtTime(16, now); // 16Hz FM whirring
+
+      this.fmGain = this.ctx.createGain();
+      this.fmGain.gain.setValueAtTime(25, now); // FM modulation depth
+
+      this.fmModulator.connect(this.fmGain);
+      this.fmGain.connect(this.carrierOsc.frequency);
+
+      const fmOutputGain = this.ctx.createGain();
+      fmOutputGain.gain.setValueAtTime(0.30, now);
+
+      this.carrierOsc.connect(fmOutputGain);
+      fmOutputGain.connect(this.mainFilter);
+
+      this.carrierOsc.start(now);
+      this.fmModulator.start(now);
+
+      // Layer 3: High Shimmer Overtones (E5: 659.25Hz, B5: 987.77Hz, D6: 1174.66Hz, G6: 1567.98Hz)
+      this.overtoneGain = this.ctx.createGain();
+      this.overtoneGain.gain.setValueAtTime(0.0001, now);
+      this.overtoneGain.connect(this.mainFilter);
+
+      const overtoneFreqs = [659.25, 987.77, 1174.66, 1567.98];
+      overtoneFreqs.forEach((freq) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.connect(this.overtoneGain!);
+        osc.start(now);
+      });
+
+    } catch (err) {
+      console.warn('InfinitySyncAudioEngine start error:', err);
+    }
+  }
+
+  public updateProgress(progressRatio: number) {
+    if (!this.isRunning || !this.ctx || this.isCompleted) return;
+
+    try {
+      if (this.ctx.state === 'suspended') {
+        this.ensureResumed();
+      }
+
+      const now = this.ctx.currentTime;
+      const r = Math.max(0, Math.min(1, progressRatio));
+
+      // Ensure masterGain is set
+      if (this.masterGain && this.targetVolume > 0) {
+        if (this.masterGain.gain.value < 0.05) {
+          this.masterGain.gain.setTargetAtTime(this.targetVolume, now, 0.05);
+        }
+      }
+
+      // 1. Filter Cutoff Sweep: 480Hz -> 6800Hz
+      if (this.mainFilter) {
+        const filterFreq = 480 + Math.pow(r, 1.3) * 6320;
+        this.mainFilter.frequency.setTargetAtTime(filterFreq, now, 0.03);
+      }
+
+      // 2. FM Glissando & Pitch Rise: C5 (523.25Hz) -> C6 (1046.50Hz)
+      if (this.carrierOsc) {
+        const carrierFreq = 523.25 + Math.pow(r, 1.1) * 523.25;
+        this.carrierOsc.frequency.setTargetAtTime(carrierFreq, now, 0.03);
+      }
+
+      // 3. FM Modulator Rate Increase (16Hz -> 42Hz whirring)
+      if (this.fmModulator) {
+        const modFreq = 16 + r * 26;
+        this.fmModulator.frequency.setTargetAtTime(modFreq, now, 0.03);
+      }
+
+      // 4. FM Modulation Depth (25 -> 65)
+      if (this.fmGain) {
+        const modDepth = 25 + r * 40;
+        this.fmGain.gain.setTargetAtTime(modDepth, now, 0.03);
+      }
+
+      // 5. Stereo Figure-8 Orbital Panning (-0.8 to +0.8 following infinity loop)
+      if (this.panner) {
+        const panValue = Math.sin(r * Math.PI * 4) * 0.8;
+        this.panner.pan.setTargetAtTime(panValue, now, 0.03);
+      }
+
+      // 6. Overtones Shimmer Volume swell near completion
+      if (this.overtoneGain) {
+        const overtoneVol = Math.pow(r, 1.8) * 0.35;
+        this.overtoneGain.gain.setTargetAtTime(overtoneVol, now, 0.03);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  public triggerSyncComplete() {
+    if (!this.isRunning || !this.ctx || this.isCompleted) return;
+
+    try {
+      this.isCompleted = true;
+      this.ensureResumed();
+
+      const now = this.ctx.currentTime;
+
+      // 1. Smoothly fade out continuous whirring pad over 0.5s
+      if (this.masterGain) {
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+        this.masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+      }
+
+      // 2. Play Majestic Resolution Chord & Crystal Chime (C Major 9th Resolve)
+      // C4 (261.63), G4 (392.00), C5 (523.25), E5 (659.25), B5 (987.77), D6 (1174.66)
+      const resolveGain = this.ctx.createGain();
+      resolveGain.gain.setValueAtTime(0.0001, now);
+      resolveGain.gain.linearRampToValueAtTime(0.55, now + 0.08);
+      resolveGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+      resolveGain.connect(this.ctx.destination);
+
+      const resolveNotes = [
+        { freq: 261.63, delay: 0 },    // C4
+        { freq: 392.00, delay: 0.04 }, // G4
+        { freq: 523.25, delay: 0.08 }, // C5
+        { freq: 659.25, delay: 0.12 }, // E5
+        { freq: 987.77, delay: 0.16 }, // B5
+        { freq: 1174.66, delay: 0.20 },// D6
+      ];
+
+      resolveNotes.forEach((note) => {
+        if (!this.ctx) return;
+        const t = now + note.delay;
+        const osc = this.ctx.createOscillator();
+        const noteGain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(note.freq, t);
+
+        noteGain.gain.setValueAtTime(0.0001, t);
+        noteGain.gain.linearRampToValueAtTime(0.28, t + 0.04);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+
+        osc.connect(noteGain);
+        noteGain.connect(resolveGain);
+
+        osc.start(t);
+        osc.stop(t + 1.7);
+      });
+
+      // Cleanup context after resolve finishes
+      setTimeout(() => {
+        this.stopSyncSound();
+      }, 1900);
+
+    } catch (err) {
+      console.warn('triggerSyncComplete error:', err);
+    }
+  }
+
+  public stopSyncSound() {
+    this.isRunning = false;
+    this.isCompleted = false;
+    this.unlockListenerAttached = false;
+
+    if (this.ctx) {
+      try {
+        if (this.ctx.state !== 'closed') {
+          this.ctx.close().catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+      this.ctx = null;
+    }
+
+    this.masterGain = null;
+    this.mainFilter = null;
+    this.panner = null;
+    this.baseOsc1 = null;
+    this.baseOsc2 = null;
+    this.carrierOsc = null;
+    this.fmModulator = null;
+    this.fmGain = null;
+    this.overtoneGain = null;
+  }
+}
+
+export const InfinitySyncAudioEngine = new InfinitySyncAudioEngineClass();
+
 // Export helper function for playing startup sound
 export function playStartupChime(volumePercent: number = 40) {
   StartupAudioManager.playCinematicStartupSequence({

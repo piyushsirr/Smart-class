@@ -296,7 +296,7 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
   const currentSizeOption = SIZE_OPTIONS.find(s => s.id === activeSize) || SIZE_OPTIONS[1];
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-3 pointer-events-auto select-none">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-auto select-none max-w-[calc(100vw-32px)]">
       
       {/* Contextual Popovers */}
       <AnimatePresence>
@@ -708,23 +708,23 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="bg-gray-900/90 backdrop-blur-2xl p-2 rounded-2xl border border-gray-700/80 shadow-[0_15px_40px_rgba(0,0,0,0.6)] flex items-center gap-2 sm:gap-3"
+        className="bg-gray-900/90 backdrop-blur-2xl p-1.5 rounded-2xl border border-gray-700/80 shadow-[0_15px_40px_rgba(0,0,0,0.6)] flex items-center gap-1 sm:gap-1.5 max-w-full overflow-x-auto scrollbar-none"
         onPointerDown={(e) => e.stopPropagation()}
       >
         
         {/* LEFT SECTION: Undo / Redo */}
-        <div className="flex items-center gap-1 border-r border-gray-800 pr-2 sm:pr-3">
+        <div className="flex items-center gap-0.5 border-r border-gray-800 pr-1 sm:pr-1.5">
           <motion.button
             whileHover={{ scale: canUndo ? 1.1 : 1 }}
             whileTap={{ scale: canUndo ? 0.9 : 1 }}
             onClick={() => editor.undo()}
             disabled={!canUndo}
-            className={`p-2 rounded-xl transition-colors relative group ${
+            className={`p-1.5 rounded-xl transition-colors relative group ${
               canUndo ? 'text-gray-200 hover:bg-gray-800 hover:text-white' : 'text-gray-600 cursor-not-allowed'
             }`}
             title="Undo"
           >
-            <Undo2 size={18} />
+            <Undo2 size={16} />
           </motion.button>
 
           <motion.button
@@ -732,29 +732,29 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
             whileTap={{ scale: canRedo ? 0.9 : 1 }}
             onClick={() => editor.redo()}
             disabled={!canRedo}
-            className={`p-2 rounded-xl transition-colors relative group ${
+            className={`p-1.5 rounded-xl transition-colors relative group ${
               canRedo ? 'text-gray-200 hover:bg-gray-800 hover:text-white' : 'text-gray-600 cursor-not-allowed'
             }`}
             title="Redo"
           >
-            <Redo2 size={18} />
+            <Redo2 size={16} />
           </motion.button>
         </div>
 
         {/* CENTER SECTION: Main Drawing Tools */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <ToolButton
-            active={activeTool === 'select'}
-            onClick={() => handleToolSelect('select')}
-            title="Select & Move (M)"
-            icon={MousePointer2}
-          />
+        <div className="flex items-center gap-0.5 sm:gap-1">
           <ToolButton
             active={activeTool === 'draw'}
             onClick={() => handleToolSelect('draw')}
             title="Pen (P)"
             icon={Pen}
             badgeColor={toolPrefs['draw']?.color ? COLOR_OPTIONS.find(c => c.id === toolPrefs['draw']?.color)?.hex : undefined}
+          />
+          <ToolButton
+            active={activeTool === 'select'}
+            onClick={() => handleToolSelect('select')}
+            title="Select & Move (M)"
+            icon={MousePointer2}
           />
           <ToolButton
             active={activeTool === 'highlight'}
@@ -802,49 +802,49 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
 
           {/* Color & Style Palette Trigger */}
           <motion.button
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
               setShowColorPicker(!showColorPicker);
               setShowShapePicker(false);
             }}
-            className={`p-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ml-1 ${
+            className={`p-1.5 rounded-xl flex items-center justify-center gap-1 transition-all ml-0.5 ${
               showColorPicker 
-                ? 'bg-blue-600/30 border border-blue-500/50 text-white shadow-lg' 
+                ? 'bg-blue-600/30 border border-blue-500/50 text-white shadow-md' 
                 : 'hover:bg-gray-800 text-gray-300 border border-transparent'
             }`}
             title="Brush Properties"
           >
             <div 
-              className="w-5 h-5 rounded-full shadow-inner transition-transform"
+              className="w-4 h-4 rounded-full shadow-inner transition-transform"
               style={{ backgroundColor: currentColorHex }}
             />
-            <Sliders size={14} className="text-gray-400" />
+            <Sliders size={13} className="text-gray-400" />
           </motion.button>
         </div>
 
         {/* DIVIDER */}
-        <div className="h-6 w-[1px] bg-gray-800 mx-0.5" />
+        <div className="h-5 w-[1px] bg-gray-800 mx-0.5" />
 
         {/* PAGE QUICK NAVIGATOR PILL */}
-        <div className="flex items-center gap-1.5 bg-gray-800/90 px-2.5 py-1.5 rounded-xl border border-gray-700/60 shadow-inner">
+        <div className="flex items-center gap-1 bg-gray-800/90 px-2 py-1 rounded-xl border border-gray-700/60 shadow-inner">
           <motion.button
             whileHover={{ scale: currentPageIndex > 0 ? 1.15 : 1 }}
             whileTap={{ scale: currentPageIndex > 0 ? 0.9 : 1 }}
             onClick={goToPrevPage}
             disabled={currentPageIndex <= 0}
-            className={`p-1.5 rounded-lg transition-all ${
+            className={`p-1 rounded-lg transition-all ${
               currentPageIndex > 0 
                 ? 'text-gray-200 hover:bg-gray-700 hover:text-white' 
                 : 'text-gray-600 cursor-not-allowed opacity-50'
             }`}
             title="Previous Page"
           >
-            <ChevronLeft size={15} />
+            <ChevronLeft size={14} />
           </motion.button>
           
-          <span className="text-xs font-semibold text-gray-200 px-1.5 whitespace-nowrap bg-gray-900/50 px-2 py-0.5 rounded-md border border-gray-700/50">
-            {pages.length > 0 ? `Page ${currentPageIndex + 1} of ${pages.length}` : 'Page 1 of 1'}
+          <span className="text-[11px] font-semibold text-gray-200 px-1.5 whitespace-nowrap bg-gray-900/50 py-0.5 rounded-md border border-gray-700/50">
+            {pages.length > 0 ? `${currentPageIndex + 1}/${pages.length}` : '1/1'}
           </span>
 
           <motion.button
@@ -852,64 +852,64 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
             whileTap={{ scale: currentPageIndex < pages.length - 1 ? 0.9 : 1 }}
             onClick={goToNextPage}
             disabled={currentPageIndex >= pages.length - 1}
-            className={`p-1.5 rounded-lg transition-all ${
+            className={`p-1 rounded-lg transition-all ${
               currentPageIndex < pages.length - 1 
                 ? 'text-gray-200 hover:bg-gray-700 hover:text-white' 
                 : 'text-gray-600 cursor-not-allowed opacity-50'
             }`}
             title="Next Page"
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={14} />
           </motion.button>
 
-          <div className="h-4 w-[1px] bg-gray-700 mx-0.5" />
+          <div className="h-3.5 w-[1px] bg-gray-700 mx-0.5" />
 
           {/* Add Page Button */}
           <motion.button
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleAddPage}
-            className="p-1.5 text-blue-400 bg-blue-500/10 hover:bg-blue-600/30 hover:text-blue-300 rounded-lg transition-all border border-blue-500/20"
+            className="p-1 text-blue-400 bg-blue-500/10 hover:bg-blue-600/30 hover:text-blue-300 rounded-lg transition-all border border-blue-500/20"
             title="Add New Page (+)"
           >
-            <Plus size={15} />
+            <Plus size={14} />
           </motion.button>
 
-          {/* Delete Page Button - Always high-visibility with red accent */}
+          {/* Delete Page Button */}
           <motion.button
             whileHover={{ scale: pages.length > 1 ? 1.15 : 1 }}
             whileTap={{ scale: pages.length > 1 ? 0.9 : 1 }}
             onClick={handleDeletePage}
             disabled={pages.length <= 1}
-            className={`p-1.5 rounded-lg transition-all border flex items-center justify-center gap-1 ${
+            className={`p-1 rounded-lg transition-all border flex items-center justify-center gap-1 ${
               pages.length > 1 
-                ? 'text-red-400 bg-red-500/20 hover:bg-red-500/40 hover:text-red-200 border-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.35)] cursor-pointer' 
+                ? 'text-red-400 bg-red-500/20 hover:bg-red-500/40 hover:text-red-200 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.3)] cursor-pointer' 
                 : 'text-red-400/40 bg-gray-800/80 border-gray-700/50 cursor-not-allowed opacity-60'
             }`}
             title={pages.length > 1 ? "Delete Current Page" : "Cannot delete (at least 1 page required)"}
           >
-            <Trash2 size={15} className={pages.length > 1 ? 'text-red-400' : 'text-red-400/50'} />
+            <Trash2 size={14} className={pages.length > 1 ? 'text-red-400' : 'text-red-400/50'} />
           </motion.button>
         </div>
 
         {/* DIVIDER */}
-        <div className="h-6 w-[1px] bg-gray-800 mx-0.5 hidden sm:block" />
+        <div className="h-5 w-[1px] bg-gray-800 mx-0.5 hidden sm:block" />
 
         {/* RIGHT SECTION: Zoom Controls & Clear */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => editor.zoomOut()}
-            className="p-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-colors"
+            className="p-1.5 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-colors"
             title="Zoom Out"
           >
-            <ZoomOut size={16} />
+            <ZoomOut size={15} />
           </motion.button>
 
           <button
             onClick={() => editor.resetZoom()}
-            className="text-xs font-medium text-gray-300 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
+            className="text-[11px] font-medium text-gray-300 hover:text-white px-1.5 py-0.5 rounded-lg hover:bg-gray-800 transition-colors"
             title="Reset Zoom to 100%"
           >
             {zoomLevel}%
@@ -919,20 +919,20 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => editor.zoomIn()}
-            className="p-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-colors"
+            className="p-1.5 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-colors"
             title="Zoom In"
           >
-            <ZoomIn size={16} />
+            <ZoomIn size={15} />
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => editor.zoomToFit()}
-            className="p-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-colors"
+            className="p-1.5 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl transition-colors"
             title="Fit Content"
           >
-            <Maximize2 size={16} />
+            <Maximize2 size={15} />
           </motion.button>
 
           {/* Clear Canvas Button */}
@@ -940,10 +940,10 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowClearConfirm(!showClearConfirm)}
-            className="p-2 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-colors ml-0.5"
+            className="p-1.5 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-colors ml-0.5"
             title="Clear Page"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </motion.button>
         </div>
 
@@ -967,28 +967,28 @@ function ToolButton({
 }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.1, y: -2 }}
+      whileHover={{ scale: 1.08, y: -1 }}
       whileTap={{ scale: 0.9 }}
       onClick={onClick}
-      className={`p-2.5 rounded-xl transition-all relative group flex items-center justify-center ${
+      className={`p-2 sm:p-2.5 rounded-xl transition-all relative group flex items-center justify-center ${
         active 
-          ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.6)] font-bold' 
+          ? 'bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] font-bold' 
           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
       }`}
       title={title}
     >
-      <Icon size={18} />
+      <Icon size={17} />
       
       {/* Optional Color Indicator Dot */}
       {badgeColor && !active && (
         <span 
-          className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full shadow-sm" 
+          className="absolute top-1 right-1 w-2 h-2 rounded-full shadow-sm" 
           style={{ backgroundColor: badgeColor }} 
         />
       )}
 
       {/* Tooltip */}
-      <span className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-gray-900/90 text-white text-[10px] px-2 py-1 rounded-md pointer-events-none whitespace-nowrap transition-opacity border border-gray-700 shadow-lg z-[110]">
+      <span className="absolute bottom-11 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-gray-900/90 text-white text-[10px] px-2 py-0.5 rounded-md pointer-events-none whitespace-nowrap transition-opacity border border-gray-700 shadow-lg z-[110]">
         {title}
       </span>
     </motion.button>
