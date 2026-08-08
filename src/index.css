@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Hide default tldraw size controls */
+[data-testid="style.size"],
+[data-testid^="style.size."],
+.tlui-button-grid:has(button[title*="Small"]),
+.tlui-style-panel__section:has(button[data-testid="style.size.s"]) {
+  display: none !important;
+}

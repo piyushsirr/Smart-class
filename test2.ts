@@ -1,0 +1,1 @@
+import { DefaultSizeStyle } from 'tldraw';
