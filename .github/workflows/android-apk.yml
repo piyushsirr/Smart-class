@@ -5,9 +5,9 @@ on:
 
 jobs:
 
-  # ============================================================
+  # ==========================================================
   # ANDROID APK
-  # ============================================================
+  # ==========================================================
   android:
     name: Build Android APK
     runs-on: ubuntu-latest
@@ -22,80 +22,54 @@ jobs:
         with:
           node-version: 22
 
-      - name: Setup Java
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
+
+      - name: Verify Java
+        run: |
+          java -version
+          javac -version
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # --------------------------------------------------------
-      # Install project dependencies
-      # IMPORTANT:
-      # We intentionally do NOT use npm cache because this
-      # repository contains bun.lock instead of package-lock.json.
-      # --------------------------------------------------------
       - name: Install dependencies
         run: npm install
 
-      # --------------------------------------------------------
-      # Build the original Smart Class web application
-      # --------------------------------------------------------
       - name: Build Smart Class
         run: npm run build
 
-      # --------------------------------------------------------
-      # Install Capacitor
-      # --------------------------------------------------------
       - name: Install Capacitor
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      # --------------------------------------------------------
-      # Create Capacitor configuration
-      # --------------------------------------------------------
       - name: Initialize Capacitor
         run: |
           npx cap init "Smart Class" "com.piyush.smartclass" --web-dir dist
 
-      # --------------------------------------------------------
-      # Add Android platform
-      # --------------------------------------------------------
-      - name: Add Android platform
+      - name: Add Android
         run: |
           npx cap add android
 
-      # --------------------------------------------------------
-      # Copy the built Smart Class website into Android
-      # --------------------------------------------------------
-      - name: Sync Capacitor
+      - name: Sync Android
         run: |
           npx cap sync android
 
-      # --------------------------------------------------------
-      # Build DEBUG APK
-      # A debug APK can be installed directly on Android.
-      # --------------------------------------------------------
-      - name: Build APK
+      - name: Build Android APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      # --------------------------------------------------------
-      # Rename APK
-      # --------------------------------------------------------
       - name: Rename APK
         run: |
           mkdir -p output
           cp android/app/build/outputs/apk/debug/app-debug.apk \
              output/Smart-Class.apk
 
-      # --------------------------------------------------------
-      # Upload APK to GitHub Actions
-      # --------------------------------------------------------
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -103,11 +77,260 @@ jobs:
           path: output/Smart-Class.apk
 
 
-  # ============================================================
+  # ==========================================================
   # WINDOWS EXE
-  # ============================================================
+  # ==========================================================
   windows:
     name: Build Windows EXE
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Checkout Smart Class
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Smart Class
+        run: npm run build
+
+      - name: Copy web build
+        shell: pwsh
+        run: |
+          if (Test-Path "web-dist") {
+            Remove-Item "web-dist" -Recurse -Force
+          }
+
+          Copy-Item "dist" "web-dist" -Recurse
+
+      - name: Install Electron
+        run: |
+          npm install --save-dev electron electron-builder
+
+      - name: Create Electron main file
+        shell: pwsh
+        run: |
+          @'
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1440,
+              height: 900,
+              minWidth: 900,
+              minHeight: 600,
+              backgroundColor: '#050505',
+              autoHideMenuBar: true,
+
+              webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                sandbox: true
+              }
+            });
+
+            win.loadFile(
+              path.join(__dirname, 'web-dist', 'index.html')
+            );
+          }
+
+          app.whenReady().then(() => {
+            createWindow();
+
+            app.on('activate', () => {
+              if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+              }
+            });
+          });
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          '@ | Out-File electron-main.cjs -Encoding utf8
+
+      - name: Create Electron configuration
+        shell: pwsh
+        run: |
+          @'
+          {
+            "name": "smart-class-desktop",
+            "version": "1.0.0",
+            "description": "Smart Class",
+            "main": "electron-main.cjs",
+
+            "scripts": {
+              "start": "electron .",
+              "build:windows": "electron-builder --win"
+            },
+
+            "build": {
+              "appId": "com.piyush.smartclass",
+              "productName": "Smart Class",
+
+              "directories": {
+                "output": "release"
+              },
+
+              "files": [
+                "web-dist/**/*",
+                "electron-main.cjs",
+                "package.json"
+              ],
+
+              "win": {
+                "target": [
+                  {
+                    "target": "nsis",
+                    "arch": ["x64"]
+                  },
+                  {
+                    "target": "portable",
+                    "arch": ["x64"]
+                  }
+                ]
+              },
+
+              "nsis": {
+                "oneClick": false,
+                "allowToChangeInstallationDirectory": true,
+                "createDesktopShortcut": true,
+                "createStartMenuShortcut": true,
+                "shortcutName": "Smart Class"
+              }
+            }
+          }
+          '@ | Out-File electron-package.json -Encoding utf8
+
+      - name: Prepare Electron package
+        shell: pwsh
+        run: |
+          Copy-Item electron-package.json package.json -Force
+
+      - name: Build Windows application
+        run: |
+          npx electron-builder --win
+
+      - name: Upload Windows applications
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart-Class-Windows
+          path: release/*.exe          const path = require('path');
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1440,
+              height: 900,
+              minWidth: 900,
+              minHeight: 600,
+              backgroundColor: '#050505',
+              autoHideMenuBar: true,
+
+              webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                sandbox: true
+              }
+            });
+
+            win.loadFile(
+              path.join(__dirname, 'web-dist', 'index.html')
+            );
+          }
+
+          app.whenReady().then(() => {
+            createWindow();
+
+            app.on('activate', () => {
+              if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+              }
+            });
+          });
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          '@ | Out-File electron-main.cjs -Encoding utf8
+
+      - name: Create Electron configuration
+        shell: pwsh
+        run: |
+          @'
+          {
+            "name": "smart-class-desktop",
+            "version": "1.0.0",
+            "description": "Smart Class",
+            "main": "electron-main.cjs",
+
+            "scripts": {
+              "start": "electron .",
+              "build:windows": "electron-builder --win"
+            },
+
+            "build": {
+              "appId": "com.piyush.smartclass",
+              "productName": "Smart Class",
+
+              "directories": {
+                "output": "release"
+              },
+
+              "files": [
+                "web-dist/**/*",
+                "electron-main.cjs",
+                "package.json"
+              ],
+
+              "win": {
+                "target": [
+                  {
+                    "target": "nsis",
+                    "arch": ["x64"]
+                  },
+                  {
+                    "target": "portable",
+                    "arch": ["x64"]
+                  }
+                ]
+              },
+
+              "nsis": {
+                "oneClick": false,
+                "allowToChangeInstallationDirectory": true,
+                "createDesktopShortcut": true,
+                "createStartMenuShortcut": true,
+                "shortcutName": "Smart Class"
+              }
+            }
+          }
+          '@ | Out-File electron-package.json -Encoding utf8
+
+      - name: Prepare Electron package
+        shell: pwsh
+        run: |
+          Copy-Item electron-package.json package.json -Force
+
+      - name: Build Windows application
+        run: |
+          npx electron-builder --win
+
+      - name: Upload Windows applications
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart-Class-Windows
+          path: release/*.exe    name: Build Windows EXE
     runs-on: windows-latest
 
     steps:
