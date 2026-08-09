@@ -1,4 +1,4 @@
-import { X, Users, Clock, Settings, MonitorPlay, MonitorUp, Volume2, Sparkles, Play, RotateCcw, Trash2, Eye } from 'lucide-react';
+import { X, Users, Clock, Settings, MonitorPlay, MonitorUp, Sparkles, Play, RotateCcw, Trash2, Eye } from 'lucide-react';
 import { Timer } from './Timer';
 import { Stopwatch } from './Stopwatch';
 import { StudentPicker } from './StudentPicker';
@@ -7,7 +7,6 @@ import { FilePanel } from './FilePanel';
 import { useState } from 'react';
 import { Editor } from 'tldraw';
 import { SplashSettings, DEFAULT_SPLASH_SETTINGS } from './SplashScreen';
-import { StartupAudioManager } from '../utils/audio';
 
 export function Sidebar({ 
   isOpen, 
@@ -176,60 +175,6 @@ export function Sidebar({
                   }`} />
                 </button>
               </div>
-
-              {/* Enable Startup Sound Toggle */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-gray-200">Startup Sound</span>
-                  <span className="text-[11px] text-gray-400">Play cinematic opening tone</span>
-                </div>
-                <button
-                  onClick={() => setSplashSettings(s => ({ ...s, soundEnabled: !s.soundEnabled }))}
-                  className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-                    splashSettings.soundEnabled ? 'bg-indigo-600' : 'bg-gray-700'
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-                    splashSettings.soundEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`} />
-                </button>
-              </div>
-
-              {/* Sound Volume Slider */}
-              {splashSettings.soundEnabled && (
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-300 font-medium flex items-center gap-1.5">
-                      <Volume2 size={14} className="text-blue-400" />
-                      Startup Volume
-                    </span>
-                    <span className="font-semibold text-blue-400">{splashSettings.soundVolume}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={splashSettings.soundVolume}
-                    onChange={(e) => {
-                      const vol = parseInt(e.target.value);
-                      setSplashSettings(s => ({ ...s, soundVolume: vol }));
-                    }}
-                    onMouseUp={() =>
-                      StartupAudioManager.playCinematicStartupSequence({
-                        soundEnabled: true,
-                        soundVolume: splashSettings.soundVolume,
-                      })
-                    }
-                    onTouchEnd={() =>
-                      StartupAudioManager.playCinematicStartupSequence({
-                        soundEnabled: true,
-                        soundVolume: splashSettings.soundVolume,
-                      })
-                    }
-                    className="w-full accent-blue-500 bg-gray-700 h-1.5 rounded-lg cursor-pointer"
-                  />
-                </div>
-              )}
 
               {/* Accessibility: Reduce Motion Toggle */}
               <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-700/40">

@@ -1,20 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, Sparkles } from 'lucide-react';
-import { StartupAudioManager, InfinitySyncAudioEngine } from '../utils/audio';
 
 export interface SplashSettings {
   enabled: boolean;
-  soundEnabled: boolean;
-  soundVolume: number; // 0 - 100
   reduceMotion?: boolean;
   speed: 'normal' | 'fast'; // normal = ~2.6s, fast = ~1.4s
 }
 
 export const DEFAULT_SPLASH_SETTINGS: SplashSettings = {
   enabled: true,
-  soundEnabled: true,
-  soundVolume: 40,
   reduceMotion: false,
   speed: 'normal',
 };
@@ -47,63 +42,7 @@ export function SplashScreen({
 
   const speedMultiplier = settings.speed === 'fast' ? 0.55 : 1.0;
   const reduceMotion = settings.reduceMotion ?? false;
-  const soundTriggeredRef = useRef(false);
   const completedTriggeredRef = useRef(false);
-
-  const [audioResumed, setAudioResumed] = useState(false);
-
-  useEffect(() => {
-    const vol = settings.soundVolume > 0 ? settings.soundVolume : 50;
-
-    // Start real-time Infinity Sync Audio Engine on mount
-    if (!soundTriggeredRef.current) {
-      soundTriggeredRef.current = true;
-      
-      // Start both synth layer and infinity progression engine
-      StartupAudioManager.playCinematicStartupSequence({
-        soundEnabled: true,
-        soundVolume: vol,
-        speedMultiplier: settings.speed === 'fast' ? 0.55 : 1.0,
-      });
-
-      InfinitySyncAudioEngine.startSyncSound(vol);
-      
-      // Immediate auto-resume attempts
-      InfinitySyncAudioEngine.ensureResumed().then(() => {
-        setAudioResumed(InfinitySyncAudioEngine.isAudioActive());
-      });
-
-      setTimeout(() => {
-        InfinitySyncAudioEngine.ensureResumed().then(() => {
-          setAudioResumed(InfinitySyncAudioEngine.isAudioActive());
-        });
-      }, 100);
-    }
-
-    const handleUnlock = () => {
-      InfinitySyncAudioEngine.ensureResumed().then(() => {
-        setAudioResumed(InfinitySyncAudioEngine.isAudioActive());
-      });
-    };
-
-    const unlockEvents = [
-      'pointerdown', 'click', 'touchstart', 'keydown',
-      'pointermove', 'mousemove', 'mouseenter', 'mouseover', 'focus', 'wheel', 'scroll'
-    ];
-
-    unlockEvents.forEach(evt => {
-      window.addEventListener(evt, handleUnlock, { capture: true, passive: true });
-      document.addEventListener(evt, handleUnlock, { capture: true, passive: true });
-    });
-
-    return () => {
-      unlockEvents.forEach(evt => {
-        window.removeEventListener(evt, handleUnlock);
-        document.removeEventListener(evt, handleUnlock);
-      });
-      InfinitySyncAudioEngine.stopSyncSound();
-    };
-  }, [settings.soundEnabled, settings.soundVolume, settings.speed]);
 
   useEffect(() => {
     // Step progression & progress bar animation
@@ -114,11 +53,6 @@ export function SplashScreen({
       const elapsed = Date.now() - startTime;
       const ratio = Math.min(1, elapsed / totalDuration);
       setProgress(ratio * 100);
-
-      // Real-time audio frequency sweep & FM modulation following infinity sync progress
-      if (settings.soundEnabled && settings.soundVolume > 0) {
-        InfinitySyncAudioEngine.updateProgress(ratio);
-      }
 
       // Update step status based on timing
       if (elapsed < 500 * speedMultiplier) {
@@ -136,26 +70,19 @@ export function SplashScreen({
       if (ratio >= 1) {
         clearInterval(interval);
 
-        // Trigger triumphant resolve chord when infinity sign completely gets synced
-        if (settings.soundEnabled && settings.soundVolume > 0 && !completedTriggeredRef.current) {
-          completedTriggeredRef.current = true;
-          InfinitySyncAudioEngine.triggerSyncComplete();
-        }
-
         setTimeout(() => {
           onComplete();
-        }, 500); // smooth exit transition after sync chime
+        }, 500); // smooth exit transition
       }
     }, 25);
 
     return () => clearInterval(interval);
-  }, [speedMultiplier, onComplete, settings.soundEnabled, settings.soundVolume]);
+  }, [speedMultiplier, onComplete]);
 
   // Keyboard shortcut to skip splash screen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
-        InfinitySyncAudioEngine.stopSyncSound();
         onComplete();
       }
     };
@@ -172,16 +99,12 @@ export function SplashScreen({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: reduceMotion ? 1 : 1.04, filter: 'blur(10px)' }}
       transition={{ duration: reduceMotion ? 0.2 : 0.5, ease: [0.16, 1, 0.3, 1] }}
-      onClick={() => {
-        InfinitySyncAudioEngine.ensureResumed();
-      }}
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#06080E] text-white select-none overflow-hidden font-sans"
     >
       {/* Top Right Skip Button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
-          InfinitySyncAudioEngine.stopSyncSound();
           onComplete();
         }}
         className="absolute top-6 right-6 z-[10000] px-3.5 py-1.5 rounded-full bg-gray-900/80 hover:bg-gray-800 text-gray-300 hover:text-white text-xs font-medium border border-gray-700/60 transition-all shadow-lg backdrop-blur-md flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95"
@@ -467,12 +390,6 @@ export function SplashScreen({
 
         {/* Bottom Hint */}
         <div className="absolute -bottom-16 text-[10px] text-gray-400 tracking-wider uppercase font-medium flex items-center gap-2">
-          {settings.soundEnabled && (
-            <span className="flex items-center gap-1.5 text-cyan-300/90 bg-gray-900/60 px-3 py-1 rounded-full border border-cyan-500/30 shadow-sm backdrop-blur-sm">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span>🔊 Infinity Audio Sync Active</span>
-            </span>
-          )}
           <span>Press ESC or Click Skip to enter canvas</span>
           {isPreview && (
             <span className="text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">

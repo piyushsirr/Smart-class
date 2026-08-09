@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { StartupAudioManager } from '../utils/audio';
 
 interface TimerState {
   timeLeft: number; // in seconds
@@ -58,13 +57,6 @@ export function ClockProvider({ children }: { children: ReactNode }) {
           if (prev <= 1) {
             setIsTimerActive(false);
             setIsTimerFinished(true);
-            // Play alarm sound when timer hits 0
-            try {
-              StartupAudioManager.playCue('LogoGlow', 80);
-              setTimeout(() => StartupAudioManager.playCue('LogoReveal', 90), 300);
-            } catch {
-              // ignore audio errors
-            }
             return 0;
           }
           return prev - 1;

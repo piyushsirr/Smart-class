@@ -62,6 +62,7 @@ interface BottomToolbarProps {
 }
 
 const COLOR_OPTIONS: { id: TLDefaultColorStyle; name: string; hex: string }[] = [
+  { id: 'white', name: 'White', hex: '#ffffff' },
   { id: 'black', name: 'Black', hex: '#1e1e1e' },
   { id: 'grey', name: 'Gray', hex: '#9e9e9e' },
   { id: 'light-violet', name: 'Purple', hex: '#cfbaf0' },
@@ -91,7 +92,7 @@ interface ToolPreferences {
 
 export function BottomToolbar({ editor }: BottomToolbarProps) {
   const [activeTool, setActiveTool] = useState<string>('select');
-  const [activeColor, setActiveColor] = useState<TLDefaultColorStyle>('black');
+  const [activeColor, setActiveColor] = useState<TLDefaultColorStyle>('white');
   const [activeSize, setActiveSize] = useState<TLDefaultSizeStyle>('m');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -150,7 +151,12 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
   if (!editor) return null;
 
   const handleToolSelect = (toolId: string) => {
-    editor.setCurrentTool(toolId);
+    const actualToolId = toolId === 'highlight' ? 'draw' : toolId;
+    try {
+      editor.setCurrentTool(actualToolId);
+    } catch (err) {
+      console.warn('Set tool warning:', err);
+    }
     setActiveTool(toolId);
     setShowColorPicker(false);
     setShowShapePicker(false);
@@ -168,7 +174,10 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
       }
     } else {
       // Default styles for certain tools if no pref exists
-      if (toolId === 'highlight') {
+      if (toolId === 'draw' || toolId === 'pen') {
+        editor.setStyleForNextShapes(DefaultColorStyle, 'white');
+        setActiveColor('white');
+      } else if (toolId === 'highlight') {
         editor.setStyleForNextShapes(DefaultColorStyle, 'yellow');
         editor.setStyleForNextShapes(DefaultSizeStyle, 'xl');
         setActiveColor('yellow');

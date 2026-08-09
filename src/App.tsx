@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Tldraw, Editor, DefaultSizeStyle } from 'tldraw';
+import { Tldraw, Editor, DefaultSizeStyle, DefaultColorStyle } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { Sidebar } from './components/Sidebar';
 import { BottomToolbar } from './components/BottomToolbar';
@@ -65,8 +65,16 @@ export default function App() {
 
   const handleMount = (editorInstance: Editor) => {
     setEditor(editorInstance);
-    // Force dark mode for optimal canvas contrast
+    // Force dark mode for optimal canvas contrast (blackboard)
     editorInstance.user.updateUserPreferences({ colorScheme: 'dark' });
+
+    // Set initial pen style to white for dark blackboard and select Pen tool by default
+    try {
+      editorInstance.setStyleForNextShapes(DefaultColorStyle, 'white');
+      editorInstance.setCurrentTool('draw');
+    } catch {
+      // ignore style error
+    }
 
     // Automatically clear any shapes or extra pages on launch
     clearCanvasAndPages(editorInstance);
@@ -80,12 +88,11 @@ export default function App() {
     return () => cleanup();
   };
 
-  // Automatically delete all pages and clear canvas when closing / unloading the app
+  // Clean up localStorage keys when unloading the app tab completely
   useEffect(() => {
     if (!editor) return;
 
-    const handleAppClose = () => {
-      clearCanvasAndPages(editor);
+    const handleBeforeUnload = () => {
       try {
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const key = localStorage.key(i);
@@ -98,12 +105,10 @@ export default function App() {
       }
     };
 
-    window.addEventListener('beforeunload', handleAppClose);
-    window.addEventListener('pagehide', handleAppClose);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('beforeunload', handleAppClose);
-      window.removeEventListener('pagehide', handleAppClose);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [editor]);
 
@@ -132,6 +137,14 @@ export default function App() {
 
       editor.setCurrentTool('draw');
       setActiveTool('draw');
+      try {
+        const sharedColor = editor.getSharedStyles().get(DefaultColorStyle);
+        if (!sharedColor || sharedColor.type !== 'shared' || sharedColor.value === 'black') {
+          editor.setStyleForNextShapes(DefaultColorStyle, 'white');
+        }
+      } catch {
+        // ignore
+      }
     };
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -155,6 +168,16 @@ export default function App() {
     if (editor) {
       editor.setCurrentTool(toolId);
       setActiveTool(toolId);
+      if (toolId === 'draw') {
+        try {
+          const sharedColor = editor.getSharedStyles().get(DefaultColorStyle);
+          if (!sharedColor || sharedColor.type !== 'shared' || sharedColor.value === 'black') {
+            editor.setStyleForNextShapes(DefaultColorStyle, 'white');
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
     setIsRadialMenuOpen(false);
   };
