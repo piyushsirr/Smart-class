@@ -1,0 +1,175 @@
+name: Build Smart Class Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Initialize Capacitor
+        run: |
+          npx cap init "Smart Class" "com.piyush.smartclass" --web-dir dist
+
+      - name: Add Android
+        run: npx cap add android
+
+      - name: Sync Android
+        run: npx cap sync android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart-Class-Android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+
+  windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Install Electron
+        run: npm install --save-dev electron electron-builder
+
+      - name: Create Electron files
+        shell: pwsh
+        run: |
+          @"
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1400,
+              height: 900,
+              minWidth: 900,
+              minHeight: 600,
+              backgroundColor: '#0a0a0a',
+              autoHideMenuBar: true,
+              webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false
+              }
+            });
+
+            win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+          }
+
+          app.whenReady().then(() => {
+            createWindow();
+
+            app.on('activate', () => {
+              if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+              }
+            });
+          });
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          "@ | Out-File -Encoding utf8 electron-main.cjs
+
+      - name: Create Electron package.json
+        shell: pwsh
+        run: |
+          @"
+          {
+            "name": "smart-class",
+            "version": "1.0.0",
+            "description": "Smart Class",
+            "main": "electron-main.cjs",
+            "author": "Piyush",
+            "scripts": {
+              "start": "electron .",
+              "dist": "electron-builder --win"
+            },
+            "build": {
+              "appId": "com.piyush.smartclass",
+              "productName": "Smart Class",
+              "files": [
+                "dist/**/*",
+                "electron-main.cjs",
+                "package.json"
+              ],
+              "win": {
+                "target": [
+                  "nsis",
+                  "portable"
+                ]
+              }
+            }
+          }
+          "@ | Out-File -Encoding utf8 electron-package.json
+
+      - name: Prepare Electron package
+        shell: pwsh
+        run: |
+          Copy-Item electron-package.json package.json -Force
+
+      - name: Build Windows application
+        run: npx electron-builder --win
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart-Class-Windows
+          path: |
+            dist/*.exe
+            
