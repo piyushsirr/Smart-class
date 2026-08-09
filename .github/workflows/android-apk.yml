@@ -5,22 +5,36 @@ on:
 
 jobs:
 
-  # ==========================================================
+  # ============================================================
   # ANDROID APK
-  # ==========================================================
+  # ============================================================
+
   android:
     name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
 
+      # --------------------------------------------------------
+      # Checkout repository
+      # --------------------------------------------------------
+
       - name: Checkout Smart Class
         uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Node.js
+      # --------------------------------------------------------
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # --------------------------------------------------------
+      # Java 21
+      # Capacitor/Gradle requires Java 21 for this project
+      # --------------------------------------------------------
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -33,30 +47,65 @@ jobs:
           java -version
           javac -version
 
+      # --------------------------------------------------------
+      # Android SDK
+      # --------------------------------------------------------
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
+      # --------------------------------------------------------
+      # Install Smart Class dependencies
+      #
+      # Do NOT use npm cache here because this repository
+      # contains bun.lock instead of package-lock.json.
+      # --------------------------------------------------------
 
       - name: Install dependencies
         run: npm install
 
+      # --------------------------------------------------------
+      # Build original Smart Class web application
+      # --------------------------------------------------------
+
       - name: Build Smart Class
         run: npm run build
+
+      # --------------------------------------------------------
+      # Install Capacitor
+      # --------------------------------------------------------
 
       - name: Install Capacitor
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
 
+      # --------------------------------------------------------
+      # Initialize Capacitor
+      # --------------------------------------------------------
+
       - name: Initialize Capacitor
         run: |
           npx cap init "Smart Class" "com.piyush.smartclass" --web-dir dist
+
+      # --------------------------------------------------------
+      # Add Android platform
+      # --------------------------------------------------------
 
       - name: Add Android
         run: |
           npx cap add android
 
+      # --------------------------------------------------------
+      # Sync web application with Android
+      # --------------------------------------------------------
+
       - name: Sync Android
         run: |
           npx cap sync android
+
+      # --------------------------------------------------------
+      # Build APK
+      # --------------------------------------------------------
 
       - name: Build Android APK
         working-directory: android
@@ -64,11 +113,19 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
+      # --------------------------------------------------------
+      # Rename APK
+      # --------------------------------------------------------
+
       - name: Rename APK
         run: |
           mkdir -p output
           cp android/app/build/outputs/apk/debug/app-debug.apk \
              output/Smart-Class.apk
+
+      # --------------------------------------------------------
+      # Upload APK
+      # --------------------------------------------------------
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -77,28 +134,49 @@ jobs:
           path: output/Smart-Class.apk
 
 
-  # ==========================================================
-  # WINDOWS EXE
-  # ==========================================================
+  # ============================================================
+  # WINDOWS APPLICATION
+  # ============================================================
+
   windows:
     name: Build Windows EXE
     runs-on: windows-latest
 
     steps:
 
+      # --------------------------------------------------------
+      # Checkout repository
+      # --------------------------------------------------------
+
       - name: Checkout Smart Class
         uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Node.js
+      # --------------------------------------------------------
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      # --------------------------------------------------------
+      # Install dependencies
+      # --------------------------------------------------------
+
       - name: Install dependencies
         run: npm install
 
+      # --------------------------------------------------------
+      # Build Smart Class
+      # --------------------------------------------------------
+
       - name: Build Smart Class
         run: npm run build
+
+      # --------------------------------------------------------
+      # Copy Vite build
+      # --------------------------------------------------------
 
       - name: Copy web build
         shell: pwsh
@@ -109,9 +187,17 @@ jobs:
 
           Copy-Item "dist" "web-dist" -Recurse
 
+      # --------------------------------------------------------
+      # Install Electron
+      # --------------------------------------------------------
+
       - name: Install Electron
         run: |
           npm install --save-dev electron electron-builder
+
+      # --------------------------------------------------------
+      # Create Electron main process
+      # --------------------------------------------------------
 
       - name: Create Electron main file
         shell: pwsh
@@ -121,12 +207,17 @@ jobs:
           const path = require('path');
 
           function createWindow() {
+
             const win = new BrowserWindow({
+
               width: 1440,
               height: 900,
+
               minWidth: 900,
               minHeight: 600,
+
               backgroundColor: '#050505',
+
               autoHideMenuBar: true,
 
               webPreferences: {
@@ -134,29 +225,49 @@ jobs:
                 nodeIntegration: false,
                 sandbox: true
               }
+
             });
 
             win.loadFile(
-              path.join(__dirname, 'web-dist', 'index.html')
+              path.join(
+                __dirname,
+                'web-dist',
+                'index.html'
+              )
             );
+
           }
 
           app.whenReady().then(() => {
+
             createWindow();
 
             app.on('activate', () => {
-              if (BrowserWindow.getAllWindows().length === 0) {
+
+              if (
+                BrowserWindow.getAllWindows().length === 0
+              ) {
                 createWindow();
               }
+
             });
+
           });
 
           app.on('window-all-closed', () => {
+
             if (process.platform !== 'darwin') {
               app.quit();
             }
+
           });
-          '@ | Out-File electron-main.cjs -Encoding utf8
+          '@ | Out-File `
+            -FilePath electron-main.cjs `
+            -Encoding utf8
+
+      # --------------------------------------------------------
+      # Create Electron configuration
+      # --------------------------------------------------------
 
       - name: Create Electron configuration
         shell: pwsh
@@ -170,11 +281,13 @@ jobs:
 
             "scripts": {
               "start": "electron .",
-              "build:windows": "electron-builder --win"
+              "build:windows": "electron-builder --win --publish never"
             },
 
             "build": {
+
               "appId": "com.piyush.smartclass",
+
               "productName": "Smart Class",
 
               "directories": {
@@ -188,37 +301,93 @@ jobs:
               ],
 
               "win": {
+
                 "target": [
+
                   {
                     "target": "nsis",
-                    "arch": ["x64"]
+                    "arch": [
+                      "x64"
+                    ]
                   },
+
                   {
                     "target": "portable",
-                    "arch": ["x64"]
+                    "arch": [
+                      "x64"
+                    ]
                   }
+
                 ]
+
               },
 
               "nsis": {
+
                 "oneClick": false,
+
                 "allowToChangeInstallationDirectory": true,
+
                 "createDesktopShortcut": true,
+
                 "createStartMenuShortcut": true,
+
                 "shortcutName": "Smart Class"
+
               }
+
             }
+
           }
-          '@ | Out-File electron-package.json -Encoding utf8
+          '@ | Out-File `
+            -FilePath electron-package.json `
+            -Encoding utf8
+
+      # --------------------------------------------------------
+      # Replace package configuration for Electron
+      # --------------------------------------------------------
 
       - name: Prepare Electron package
         shell: pwsh
         run: |
-          Copy-Item electron-package.json package.json -Force
+          Copy-Item `
+            electron-package.json `
+            package.json `
+            -Force
+
+      # --------------------------------------------------------
+      # Build Windows EXE
+      #
+      # IMPORTANT:
+      # --publish never prevents Electron Builder from trying
+      # to upload the application to GitHub.
+      # --------------------------------------------------------
 
       - name: Build Windows application
         run: |
-          npx electron-builder --win
+          npx electron-builder --win --publish never
+
+      # --------------------------------------------------------
+      # Show generated files
+      # --------------------------------------------------------
+
+      - name: Show Windows build
+        shell: pwsh
+        run: |
+          Write-Host "Windows build files:"
+
+          if (Test-Path "release") {
+            Get-ChildItem `
+              "release" `
+              -Recurse
+          }
+          else {
+            Write-Error "Release directory was not created."
+          }
+
+      # --------------------------------------------------------
+      # Upload Windows EXE
+      # --------------------------------------------------------
 
       - name: Upload Windows applications
         uses: actions/upload-artifact@v4
