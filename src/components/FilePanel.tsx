@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
 import { Editor } from 'tldraw';
-import { Download, Upload, FileText, Save } from 'lucide-react';
+import { Download, Upload, FileText, Save, Image as ImageIcon } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 
 export function FilePanel({ editor }: { editor: Editor | null }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
   const saveFile = () => {
     if (!editor) return;
@@ -35,6 +36,25 @@ export function FilePanel({ editor }: { editor: Editor | null }) {
       }
     };
     reader.readAsText(file);
+    e.target.value = ''; // Reset
+  };
+
+  const loadMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !editor) return;
+    
+    try {
+      await editor.putExternalContent({
+        type: 'files',
+        files: Array.from(files),
+        point: editor.getViewportPageBounds().center,
+        ignoreParent: false,
+      });
+    } catch (err) {
+      console.error("Failed to import media", err);
+      alert("Failed to import files into the board.");
+    }
+    
     e.target.value = ''; // Reset
   };
 
@@ -110,6 +130,14 @@ export function FilePanel({ editor }: { editor: Editor | null }) {
           <FileText size={18} />
           <span className="text-[10px] font-medium uppercase tracking-wider">Export to PDF</span>
         </button>
+
+        <button 
+          onClick={() => mediaInputRef.current?.click()}
+          className="col-span-2 p-2 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 rounded-lg transition-colors flex items-center justify-center gap-2 mt-2"
+        >
+          <ImageIcon size={18} />
+          <span className="text-[10px] font-medium uppercase tracking-wider">Import Image / PDF</span>
+        </button>
       </div>
       
       <input 
@@ -118,6 +146,15 @@ export function FilePanel({ editor }: { editor: Editor | null }) {
         accept=".ibd"
         style={{ display: 'none' }}
         onChange={loadFile}
+      />
+
+      <input 
+        type="file" 
+        ref={mediaInputRef}
+        accept="image/*,application/pdf"
+        multiple
+        style={{ display: 'none' }}
+        onChange={loadMedia}
       />
     </div>
   );

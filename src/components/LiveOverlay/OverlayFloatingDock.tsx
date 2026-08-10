@@ -202,11 +202,8 @@ export function OverlayFloatingDock({
 
           {/* Section 1: Main Annotation & Drawing Tools with Full Text Labels */}
           <div className="space-y-1">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
-              Drawing & Text Tools
-            </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Select / Cursor */}
+              {/* Select / Cursor (Mover) */}
               <button
                 onClick={() => {
                   onSelectTool('interactive');
@@ -217,10 +214,10 @@ export function OverlayFloatingDock({
                     ? 'bg-emerald-600 text-white shadow-md'
                     : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
                 }`}
-                title="Select / Click Through (Esc)"
+                title="Select / Mover (Esc)"
               >
                 <MousePointer size={15} />
-                <span>Select</span>
+                <span>Mover</span>
               </button>
 
               {/* Pen Tool */}
@@ -231,24 +228,10 @@ export function OverlayFloatingDock({
                     ? 'bg-blue-600 text-white shadow-md border border-blue-400'
                     : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
                 }`}
-                title="Pen Tool (F3)"
+                title="Pen Tool"
               >
                 <Pencil size={15} />
                 <span>Pen</span>
-              </button>
-
-              {/* Highlighter */}
-              <button
-                onClick={() => onSelectTool('highlighter')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'highlighter' && mode === 'annotation'
-                    ? 'bg-yellow-500 text-gray-950 font-black shadow-md'
-                    : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
-                }`}
-                title="Highlighter (F4)"
-              >
-                <Highlighter size={15} />
-                <span>Highlighter</span>
               </button>
 
               {/* Eraser */}
@@ -265,238 +248,31 @@ export function OverlayFloatingDock({
                 <span>Eraser</span>
               </button>
 
-              {/* Text Overlay Tool ("any text") */}
+              {/* Screenshot Tool */}
               <button
-                onClick={() => onSelectTool('text')}
+                onClick={() => {
+                  onSelectTool('screenshot');
+                  if (mode !== 'annotation') onToggleMode();
+                }}
                 className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'text' && mode === 'annotation'
-                    ? 'bg-purple-600 text-white shadow-md border border-purple-400'
+                  activeTool === 'screenshot'
+                    ? 'bg-blue-600 text-white shadow-md border border-blue-400'
                     : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
                 }`}
-                title="Add Text Anywhere on Screen"
+                title="Capture Screenshot (Drag a region on screen)"
               >
-                <Type size={15} className="text-purple-300" />
-                <span>Text</span>
-              </button>
-
-              {/* Color & Width Adjusters */}
-              <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-750 flex items-center gap-1.5 border border-gray-700 text-xs font-bold text-gray-200"
-                title="Pen Color Palette"
-              >
-                <div
-                  className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-sm"
-                  style={{ backgroundColor: penStyle.color }}
-                />
-                <Palette size={14} className="text-gray-400" />
-                <span>Color</span>
-              </button>
-
-              <button
-                onClick={() => setShowWidthSlider(!showWidthSlider)}
-                className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-750 text-xs font-bold text-gray-200 border border-gray-700 flex items-center gap-1"
-                title="Stroke Width"
-              >
-                <span>Size:</span>
-                <span className="text-blue-400 font-mono">{penStyle.width}px</span>
-              </button>
-
-              {/* Undo / Redo */}
-              <div className="flex items-center gap-1 border-l border-gray-800 pl-1.5">
-                <button
-                  onClick={onUndo}
-                  className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-xl"
-                  title="Undo (Ctrl+Z)"
-                >
-                  <Undo2 size={15} />
-                </button>
-                <button
-                  onClick={onRedo}
-                  className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-xl"
-                  title="Redo (Ctrl+Y)"
-                >
-                  <Redo2 size={15} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Shapes & Highlighters */}
-          <div className="space-y-1 pt-1 border-t border-gray-800/80">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
-              Shapes & Diagrams
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                onClick={() => onSelectTool('rectangle')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'rectangle' ? 'bg-blue-600 text-white' : 'bg-gray-800/80 text-gray-300'
-                }`}
-              >
-                <Square size={15} />
-                <span>Rectangle</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('circle')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'circle' ? 'bg-blue-600 text-white' : 'bg-gray-800/80 text-gray-300'
-                }`}
-              >
-                <Circle size={15} />
-                <span>Circle</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('arrow')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'arrow' ? 'bg-blue-600 text-white' : 'bg-gray-800/80 text-gray-300'
-                }`}
-              >
-                <ArrowRight size={15} />
-                <span>Arrow</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('line')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'line' ? 'bg-blue-600 text-white' : 'bg-gray-800/80 text-gray-300'
-                }`}
-              >
-                <Minus size={15} />
-                <span>Line</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Section 3: Interactive Focus & Presentation Widgets */}
-          <div className="space-y-1 pt-1 border-t border-gray-800/80">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
-              Focus & Presentation Tools
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                onClick={() => onSelectTool('laser')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'laser'
-                    ? 'bg-red-600 text-white shadow-md border border-red-400'
-                    : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
-                }`}
-                title="Laser Pointer (F5)"
-              >
-                <Sparkles size={15} className="text-red-400" />
-                <span>Laser</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('spotlight')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'spotlight'
-                    ? 'bg-amber-500 text-gray-950 font-black shadow-md'
-                    : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
-                }`}
-                title="Spotlight (F6)"
-              >
-                <Sun size={15} />
-                <span>Spotlight</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('magnifier')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'magnifier'
-                    ? 'bg-cyan-600 text-white shadow-md'
-                    : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
-                }`}
-                title="Live Magnifier Glass (F7)"
-              >
-                <Search size={15} />
-                <span>Magnifier</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('freeze')}
-                className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                  activeTool === 'freeze'
-                    ? 'bg-cyan-500 text-gray-950 font-black'
-                    : 'bg-gray-800/80 hover:bg-gray-700 text-gray-300'
-                }`}
-                title="Screen Freeze (F8)"
-              >
-                <Snowflake size={15} className="text-cyan-400" />
-                <span>Freeze</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('screenshot')}
-                className="px-2.5 py-1.5 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-gray-300 transition-all flex items-center gap-1.5 text-xs font-bold"
-                title="Capture Screenshot (F9)"
-              >
-                <Camera size={15} className="text-blue-400" />
+                <Camera size={15} className={activeTool === 'screenshot' ? 'text-white' : 'text-blue-400'} />
                 <span>Screenshot</span>
               </button>
-            </div>
-          </div>
-
-          {/* Section 4: Classroom Utilities & Screen Curtains */}
-          <div className="space-y-1 pt-1 border-t border-gray-800/80">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
-              Classroom Tools & Curtains
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
+              
+              {/* Back to Board / Close Overlay */}
               <button
-                onClick={() => onSelectTool('ruler')}
-                className="px-2.5 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-xl flex items-center gap-1.5 text-xs font-bold"
-                title="Ruler & Protractor"
+                onClick={onCloseOverlay}
+                className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 transition-all flex items-center gap-1.5 text-xs font-bold border border-red-500/30 ml-auto"
+                title="Go back to infinity board"
               >
-                <Ruler size={15} />
-                <span>Ruler</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('calculator')}
-                className="px-2.5 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-xl flex items-center gap-1.5 text-xs font-bold"
-                title="Scientific Calculator"
-              >
-                <Calculator size={15} />
-                <span>Calculator</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('timer')}
-                className="px-2.5 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-xl flex items-center gap-1.5 text-xs font-bold"
-                title="Classroom Timer"
-              >
-                <Clock size={15} />
-                <span>Timer</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('studentPicker')}
-                className="px-2.5 py-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-xl flex items-center gap-1.5 text-xs font-bold"
-                title="Random Student Name Picker"
-              >
-                <Users size={15} />
-                <span>Picker</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('whiteScreen')}
-                className="px-2.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold flex items-center gap-1"
-                title="Toggle White Curtain (F10)"
-              >
-                <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                <span>White Screen</span>
-              </button>
-
-              <button
-                onClick={() => onSelectTool('blackScreen')}
-                className="px-2.5 py-1.5 rounded-xl bg-gray-950 hover:bg-gray-800 text-gray-300 border border-gray-700 text-xs font-bold flex items-center gap-1"
-                title="Toggle Black Curtain (F11)"
-              >
-                <div className="w-2.5 h-2.5 rounded-full bg-black border border-gray-600" />
-                <span>Black Screen</span>
+                <X size={15} />
+                <span>Back to Board</span>
               </button>
             </div>
           </div>

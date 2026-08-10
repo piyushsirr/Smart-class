@@ -10,18 +10,28 @@ export function PagesPanel({ editor }: { editor: Editor | null }) {
   useEffect(() => {
     if (!editor) return;
 
-    const updatePages = () => {
+    let rafId: number;
+    let isUpdating = false;
+
+    const updatePages = () => { try {
       setPages(editor.getPages());
       setCurrentPageId(editor.getCurrentPageId());
+      } catch(e){} finally{ isUpdating = false; }
     };
 
     updatePages();
 
     const cleanup = editor.store.listen(() => {
-      updatePages();
+      if (!isUpdating) {
+        isUpdating = true;
+        rafId = requestAnimationFrame(updatePages);
+      }
     });
 
-    return () => cleanup();
+    return () => {
+      cleanup();
+      cancelAnimationFrame(rafId);
+    };
   }, [editor]);
 
   const addPage = () => {

@@ -113,7 +113,10 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
   useEffect(() => {
     if (!editor) return;
 
-    const updateState = () => {
+    let rafId: number;
+    let isUpdating = false;
+
+    const updateState = () => { try {
       const currentToolId = editor.getCurrentToolId();
       setActiveTool(currentToolId);
       
@@ -137,15 +140,23 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
       if (sizeStyle && sizeStyle.type === 'shared') {
         setActiveSize(sizeStyle.value as TLDefaultSizeStyle);
       }
+
+      } catch (err) { console.error(err); } finally { isUpdating = false; }
     };
 
     updateState();
 
     const cleanup = editor.store.listen(() => {
-      updateState();
+      if (!isUpdating) {
+        isUpdating = true;
+        rafId = requestAnimationFrame(updateState);
+      }
     });
 
-    return () => cleanup();
+    return () => {
+      cleanup();
+      cancelAnimationFrame(rafId);
+    };
   }, [editor]);
 
   if (!editor) return null;

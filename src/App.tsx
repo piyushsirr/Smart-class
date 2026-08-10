@@ -12,6 +12,7 @@ import { SplashScreen, SplashSettings, DEFAULT_SPLASH_SETTINGS } from './compone
 import { FloatingClockOverlay } from './components/FloatingClockOverlay';
 import { ClockProvider } from './context/ClockContext';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { LiveOverlay } from './components/LiveOverlay/LiveOverlay';
 import { 
   Menu, 
   Pen, 
@@ -20,7 +21,8 @@ import {
   StickyNote, 
   Zap, 
   X, 
-  Sparkles
+  Sparkles,
+  MonitorPlay
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -30,6 +32,7 @@ export default function App() {
   const [isRadialMenuOpen, setIsRadialMenuOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<string>('select');
   const [overlay, setOverlay] = useState<'none' | 'black' | 'white'>('none');
+  const [isLiveOverlayOpen, setIsLiveOverlayOpen] = useState(false);
 
   // Splash Screen settings & state
   const [splashSettings, setSplashSettings] = useLocalStorage<SplashSettings>(
@@ -80,12 +83,25 @@ export default function App() {
     clearCanvasAndPages(editorInstance);
 
     // Track current tool changes
-    setActiveTool(editorInstance.getCurrentToolId());
+    try { setActiveTool(editorInstance.getCurrentToolId()); } catch (err) { console.error(err); }
+    
+    let rafId: number;
+    let isUpdating = false;
+    
     const cleanup = editorInstance.store.listen(() => {
-      setActiveTool(editorInstance.getCurrentToolId());
+      if (!isUpdating) {
+        isUpdating = true;
+        rafId = requestAnimationFrame(() => {
+          try { setActiveTool(editorInstance.getCurrentToolId()); } catch (err) { console.error(err); }
+          isUpdating = false;
+        });
+      }
     });
 
-    return () => cleanup();
+    return () => {
+      cleanup();
+      cancelAnimationFrame(rafId);
+    };
   };
 
   // Clean up localStorage keys when unloading the app tab completely
@@ -165,6 +181,12 @@ export default function App() {
   }, [editor]);
 
   const selectTool = (toolId: string) => {
+    if (toolId === 'live-overlay') {
+      setIsLiveOverlayOpen(!isLiveOverlayOpen);
+      setIsRadialMenuOpen(false);
+      return;
+    }
+
     if (editor) {
       editor.setCurrentTool(toolId);
       setActiveTool(toolId);
@@ -182,13 +204,14 @@ export default function App() {
     setIsRadialMenuOpen(false);
   };
 
-  // 5 Important Core Functions attached to the Logo Radial Menu
+  // Important Core Functions attached to the Logo Radial Menu
   const logoTools = [
     { id: 'draw', name: 'Pen', icon: Pen, color: 'from-emerald-400 to-teal-500', angle: 0 },
     { id: 'select', name: 'Mover', icon: MousePointer2, color: 'from-blue-500 to-cyan-500', angle: 40 },
     { id: 'eraser', name: 'Eraser', icon: Eraser, color: 'from-rose-500 to-red-500', angle: 80 },
     { id: 'note', name: 'Sticky Note', icon: StickyNote, color: 'from-amber-400 to-orange-500', angle: 120 },
     { id: 'laser', name: 'Laser Pointer', icon: Zap, color: 'from-purple-500 to-indigo-500', angle: 160 },
+    { id: 'live-overlay', name: 'Live Overlay', icon: MonitorPlay, color: 'from-cyan-500 to-blue-600', angle: 200 },
   ];
 
   return (
@@ -218,7 +241,7 @@ export default function App() {
       </div>
 
       {/* Top Left Branding & Animated Circular Radial Menu */}
-      <div className="absolute top-4 left-4 z-[60] pointer-events-auto select-none flex flex-col items-start gap-2">
+      <div className="absolute top-4 left-4 z-[9990] pointer-events-auto select-none flex flex-col items-start gap-2">
         <motion.div 
           drag
           dragMomentum={false}
@@ -272,7 +295,7 @@ export default function App() {
                 <div className="absolute top-16 left-0 flex flex-col gap-2 min-w-[220px]">
                   {logoTools.map((tool, index) => {
                     const Icon = tool.icon;
-                    const isActive = activeTool === tool.id;
+                    const isActive = activeTool === tool.id || (tool.id === 'live-overlay' && isLiveOverlayOpen);
 
                     return (
                       <motion.button
@@ -321,6 +344,13 @@ export default function App() {
           </AnimatePresence>
         </motion.div>
       </div>
+
+      {/* Live Overlay Component */}
+      <LiveOverlay 
+        isOpen={isLiveOverlayOpen} 
+        onClose={() => setIsLiveOverlayOpen(false)} 
+        editor={editor} 
+      />
 
       {/* Bottom Floating Control Dock */}
       <BottomToolbar editor={editor} />

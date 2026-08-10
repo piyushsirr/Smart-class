@@ -6,7 +6,6 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  /* Prevent pull-to-refresh and mobile scrolling from interfering with canvas */
   touch-action: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;

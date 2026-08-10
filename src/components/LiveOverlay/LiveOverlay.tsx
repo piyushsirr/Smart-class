@@ -17,7 +17,6 @@ import { SpotlightOverlay } from './SpotlightOverlay';
 import { MagnifierLens } from './MagnifierLens';
 import { RulerProtractorTools } from './RulerProtractorTools';
 import { ClassroomMiniWidgets } from './ClassroomMiniWidgets';
-import { ScreenshotModal } from './ScreenshotModal';
 import { OverlaySettingsModal } from './OverlaySettingsModal';
 import { OverlayFloatingDock } from './OverlayFloatingDock';
 import { X, Type, Trash2, Bold, GripVertical, Plus } from 'lucide-react';
@@ -148,7 +147,8 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
       } else if (e.key === shortcuts.freeze) {
         handleToggleFreeze();
       } else if (e.key === shortcuts.screenshot) {
-        setShowScreenshotModal(true);
+        setActiveTool('screenshot');
+        setMode('annotation');
       } else if (e.key === shortcuts.whiteScreen) {
         setCurtain((c) => (c === 'white' ? 'none' : 'white'));
       } else if (e.key === shortcuts.blackScreen) {
@@ -249,31 +249,46 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
 
     // Draw live stroke/shape preview if currently drawing
     if (isDrawing && currentPathRef.current.length > 0) {
-      const toolType =
-        activeTool === 'highlighter'
-          ? 'highlighter'
-          : activeTool === 'eraser'
-          ? 'eraser'
-          : activeTool === 'rectangle'
-          ? 'rectangle'
-          : activeTool === 'circle'
-          ? 'circle'
-          : activeTool === 'line'
-          ? 'line'
-          : activeTool === 'arrow'
-          ? 'arrow'
-          : 'pen';
+      if (activeTool === 'screenshot' && currentPathRef.current.length >= 2) {
+        ctx.save();
+        ctx.strokeStyle = '#3b82f6';
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        const start = currentPathRef.current[0];
+        const end = currentPathRef.current[1];
+        const w = end.x - start.x;
+        const h = end.y - start.y;
+        ctx.fillRect(start.x, start.y, w, h);
+        ctx.strokeRect(start.x, start.y, w, h);
+        ctx.restore();
+      } else {
+        const toolType =
+          activeTool === 'highlighter'
+            ? 'highlighter'
+            : activeTool === 'eraser'
+            ? 'eraser'
+            : activeTool === 'rectangle'
+            ? 'rectangle'
+            : activeTool === 'circle'
+            ? 'circle'
+            : activeTool === 'line'
+            ? 'line'
+            : activeTool === 'arrow'
+            ? 'arrow'
+            : 'pen';
 
-      const tempItem: AnnotationItem = {
-        id: 'preview',
-        tool: toolType as any,
-        points: currentPathRef.current,
-        color: activeTool === 'highlighter' ? '#facc15' : penStyle.color,
-        width: activeTool === 'highlighter' ? 24 : activeTool === 'eraser' ? penStyle.width * 2 : penStyle.width,
-        opacity: activeTool === 'highlighter' ? 0.4 : penStyle.opacity,
-      };
+        const tempItem: AnnotationItem = {
+          id: 'preview',
+          tool: toolType as any,
+          points: currentPathRef.current,
+          color: activeTool === 'highlighter' ? '#facc15' : penStyle.color,
+          width: activeTool === 'highlighter' ? 24 : activeTool === 'eraser' ? penStyle.width * 2 : penStyle.width,
+          opacity: activeTool === 'highlighter' ? 0.4 : penStyle.opacity,
+        };
 
-      drawAnnotation(ctx, tempItem);
+        drawAnnotation(ctx, tempItem);
+      }
     }
   };
 
@@ -314,7 +329,7 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
     if (['pen', 'highlighter', 'eraser'].includes(activeTool)) {
       currentPathRef.current.push(point);
     } else {
-      // Shapes (rectangle, circle, line, arrow) only need start point and current point
+      // Shapes (rectangle, circle, line, arrow, screenshot) only need start point and current point
       currentPathRef.current = [currentPathRef.current[0], point];
     }
 
@@ -332,6 +347,23 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
     }
 
     setIsDrawing(false);
+
+    if (activeTool === 'screenshot' && currentPathRef.current.length >= 2) {
+      const start = currentPathRef.current[0];
+      const end = currentPathRef.current[1];
+      const bbox = {
+        x: Math.min(start.x, end.x),
+        y: Math.min(start.y, end.y),
+        width: Math.abs(end.x - start.x),
+        height: Math.abs(end.y - start.y)
+      };
+      
+      currentPathRef.current = [];
+      redrawCanvas();
+      
+      handleCaptureRegion(bbox);
+      return;
+    }
 
     if (currentPathRef.current.length > 0) {
       const toolType =
@@ -379,6 +411,77 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
     };
     setTextOverlayItems((prev) => [...prev, newTextItem]);
     setActiveEditingTextId(id);
+  };
+
+  const handleCaptureRegion = async (bbox: { x: number, y: number, width: number, height: number }) => {
+    if (bbox.width < 10 || bbox.height < 10) return;
+    
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        // We will temporarily hide the UI if needed, but getDisplayMedia asks the user first.
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: 'monitor' },
+        });
+
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await video.play();
+
+        const canvas = document.createElement('canvas');
+        canvas.width = bbox.width;
+        canvas.height = bbox.height;
+        const ctx = canvas.getContext('2d');
+        
+        const scaleX = video.videoWidth / window.innerWidth;
+        const scaleY = video.videoHeight / window.innerHeight;
+        
+        ctx?.drawImage(
+          video, 
+          bbox.x * scaleX, bbox.y * scaleY, bbox.width * scaleX, bbox.height * scaleY,
+          0, 0, bbox.width, bbox.height
+        );
+
+        stream.getTracks().forEach((t) => t.stop());
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        if (editor) {
+          const assetId = `asset:${Date.now()}` as any;
+          editor.createAssets([
+            {
+              id: assetId,
+              typeName: 'asset',
+              type: 'image',
+              props: {
+                name: 'Screen Snippet',
+                src: dataUrl,
+                w: bbox.width,
+                h: bbox.height,
+                mimeType: 'image/png',
+                isAnimated: false,
+              },
+              meta: {},
+            },
+          ]);
+
+          editor.createShape({
+            type: 'image',
+            x: editor.getCamera().x + bbox.x,
+            y: editor.getCamera().y + bbox.y,
+            props: {
+              assetId: assetId,
+              w: bbox.width,
+              h: bbox.height,
+            },
+          });
+          
+          onClose(); // Go back to whiteboard
+        }
+      } else {
+        alert("Screen capture is not supported in this browser.");
+      }
+    } catch (e) {
+      console.warn("Capture canceled or failed:", e);
+    }
   };
 
   const handleUndo = () => {
@@ -587,7 +690,8 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
         activeTool={activeTool}
         onSelectTool={(tool) => {
           if (tool === 'screenshot') {
-            setShowScreenshotModal(true);
+            setActiveTool('screenshot');
+            setMode('annotation');
           } else if (tool === 'freeze') {
             handleToggleFreeze();
           } else if (tool === 'whiteScreen') {
@@ -619,12 +723,6 @@ export function LiveOverlay({ isOpen, onClose, editor }: LiveOverlayProps) {
       />
 
       {/* Modals */}
-      <ScreenshotModal
-        isOpen={showScreenshotModal}
-        onClose={() => setShowScreenshotModal(false)}
-        editor={editor}
-      />
-
       <OverlaySettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
