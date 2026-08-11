@@ -14,8 +14,13 @@ export function PagesPanel({ editor }: { editor: Editor | null }) {
     let isUpdating = false;
 
     const updatePages = () => { try {
-      setPages(editor.getPages());
-      setCurrentPageId(editor.getCurrentPageId());
+      const allPages = editor.getPages();
+      setPages(prev => {
+        if (prev.length === allPages.length && prev.every((p, i) => p.id === allPages[i].id && p.name === allPages[i].name)) return prev;
+        return allPages;
+      });
+      const curr = editor.getCurrentPageId();
+      setCurrentPageId(prev => prev === curr ? prev : curr);
       } catch(e){} finally{ isUpdating = false; }
     };
 

@@ -14,7 +14,7 @@ export function FilePanel({ editor }: { editor: Editor | null }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `infinity-board-${new Date().toISOString().slice(0, 10)}.ibd`;
+    a.download = `nga-smartboard-${new Date().toISOString().slice(0, 10)}.ibd`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -32,7 +32,7 @@ export function FilePanel({ editor }: { editor: Editor | null }) {
         editor.loadSnapshot(json);
       } catch (err) {
         console.error("Failed to load file", err);
-        alert("Invalid InfinityBoard file format.");
+        alert("Invalid NGA-SmartBoard file format.");
       }
     };
     reader.readAsText(file);

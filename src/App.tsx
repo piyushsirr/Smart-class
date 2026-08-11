@@ -92,7 +92,10 @@ export default function App() {
       if (!isUpdating) {
         isUpdating = true;
         rafId = requestAnimationFrame(() => {
-          try { setActiveTool(editorInstance.getCurrentToolId()); } catch (err) { console.error(err); }
+          try {
+            const current = editorInstance.getCurrentToolId();
+            setActiveTool((prev) => (prev !== current ? current : prev));
+          } catch (err) { console.error(err); }
           isUpdating = false;
         });
       }
@@ -269,7 +272,7 @@ export default function App() {
 
             <div className="flex flex-col text-left">
               <h1 className="font-bold text-white tracking-tight text-sm flex items-center gap-1.5">
-                InfinityBoard
+                NGA-SmartBoard
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               </h1>
               <span className="text-[10px] text-blue-400 font-medium tracking-wide flex items-center gap-1">

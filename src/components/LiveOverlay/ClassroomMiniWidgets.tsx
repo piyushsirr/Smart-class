@@ -29,7 +29,8 @@ export function ClassroomMiniWidgets({ activeWidget, onClose }: ClassroomMiniWid
       setCalcDisplay('0');
     } else if (val === '=') {
       try {
-        setCalcDisplay(eval(calcDisplay.replace(/×/g, '*').replace(/÷/g, '/')).toString());
+        // eslint-disable-next-line no-new-func
+        setCalcDisplay(new Function('return ' + calcDisplay.replace(/×/g, '*').replace(/÷/g, '/'))().toString());
       } catch {
         setCalcDisplay('Error');
       }

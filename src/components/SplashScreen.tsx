@@ -363,7 +363,7 @@ export function SplashScreen({
               className="space-y-1 mb-8"
             >
               <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-gray-300 flex items-center justify-center gap-2">
-                InfinityBoard
+                NGA-SmartBoard
                 <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-cyan-300 font-bold border border-cyan-500/30 tracking-widest uppercase shadow-[0_0_10px_rgba(6,182,212,0.2)]">
                   Pro
                 </span>
@@ -473,7 +473,7 @@ export function SplashScreen({
               transition={{ delay: 0.2 }}
               className="text-xs text-gray-400 max-w-xs font-medium leading-relaxed mb-6"
             >
-              Creator of <span className="text-cyan-300 font-semibold">InfinityBoard Pro</span>. Architecting high-performance digital whiteboards and interactive canvas engines.
+              Creator of <span className="text-cyan-300 font-semibold">NGA-SmartBoard Pro</span>. Architecting high-performance digital whiteboards and interactive canvas engines.
             </motion.p>
 
             {/* Feature Cards Grid */}

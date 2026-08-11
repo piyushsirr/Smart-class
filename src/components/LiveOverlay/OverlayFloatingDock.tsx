@@ -101,7 +101,7 @@ export function OverlayFloatingDock({
 
           <div className="flex flex-col text-left">
             <span className="font-extrabold text-xs tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-gray-300">
-              InfinityBoard Live
+              NGA-SmartBoard Live
             </span>
             <span className="text-[10px] text-blue-400 font-semibold tracking-wider uppercase">
               Click to Expand Tools
@@ -128,7 +128,7 @@ export function OverlayFloatingDock({
               </div>
               <div className="flex flex-col">
                 <span className="font-extrabold text-xs tracking-tight text-white flex items-center gap-1.5">
-                  InfinityBoard
+                  NGA-SmartBoard
                   <span className="text-[9px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.5 rounded uppercase border border-blue-500/30">
                     Live Overlay
                   </span>
@@ -269,7 +269,7 @@ export function OverlayFloatingDock({
               <button
                 onClick={onCloseOverlay}
                 className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 transition-all flex items-center gap-1.5 text-xs font-bold border border-red-500/30 ml-auto"
-                title="Go back to infinity board"
+                title="Go back to NGA-SmartBoard"
               >
                 <X size={15} />
                 <span>Back to Board</span>

@@ -137,8 +137,8 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     let interval: number | undefined;
     if (isStopwatchActive) {
       interval = window.setInterval(() => {
-        setStopwatchTime((t) => t + 10);
-      }, 10);
+        setStopwatchTime((t) => t + 50);
+      }, 50);
     }
     return () => clearInterval(interval);
   }, [isStopwatchActive]);

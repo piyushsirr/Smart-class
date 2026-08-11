@@ -118,27 +118,42 @@ export function BottomToolbar({ editor }: BottomToolbarProps) {
 
     const updateState = () => { try {
       const currentToolId = editor.getCurrentToolId();
-      setActiveTool(currentToolId);
+      setActiveTool(prev => prev === currentToolId ? prev : currentToolId);
       
-      setCanUndo(editor.getCanUndo());
-      setCanRedo(editor.getCanRedo());
-      setZoomLevel(Math.round(editor.getZoomLevel() * 100));
-      
-      const allPages = editor.getPages();
-      setPages(allPages);
-      setCurrentPageId(editor.getCurrentPageId());
+      const u = editor.getCanUndo();
+      setCanUndo(prev => prev === u ? prev : u);
 
-      const selected = editor.getSelectedShapeIds();
-      setSelectedShapeIds(selected as TLShapeId[]);
+      const r = editor.getCanRedo();
+      setCanRedo(prev => prev === r ? prev : r);
+
+      const z = Math.round(editor.getZoomLevel() * 100);
+      setZoomLevel(prev => prev === z ? prev : z);
+      
+      const pId = editor.getCurrentPageId();
+      setCurrentPageId(prev => prev === pId ? prev : pId);
+
+      const allPages = editor.getPages();
+      setPages(prev => {
+        if (prev.length === allPages.length && prev.every((p, i) => p.id === allPages[i].id && p.name === allPages[i].name)) return prev;
+        return allPages;
+      });
+
+      const selected = editor.getSelectedShapeIds() as TLShapeId[];
+      setSelectedShapeIds(prev => {
+        if (prev.length === selected.length && prev.every((id, i) => id === selected[i])) return prev;
+        return selected;
+      });
 
       const sharedStyles = editor.getSharedStyles();
       const colorStyle = sharedStyles.get(DefaultColorStyle);
       if (colorStyle && colorStyle.type === 'shared') {
-        setActiveColor(colorStyle.value as TLDefaultColorStyle);
+        const col = colorStyle.value as TLDefaultColorStyle;
+        setActiveColor(prev => prev === col ? prev : col);
       }
       const sizeStyle = sharedStyles.get(DefaultSizeStyle);
       if (sizeStyle && sizeStyle.type === 'shared') {
-        setActiveSize(sizeStyle.value as TLDefaultSizeStyle);
+        const sz = sizeStyle.value as TLDefaultSizeStyle;
+        setActiveSize(prev => prev === sz ? prev : sz);
       }
 
       } catch (err) { console.error(err); } finally { isUpdating = false; }

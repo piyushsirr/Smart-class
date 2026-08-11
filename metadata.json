@@ -1,5 +1,5 @@
 {
-  "name": "Infinity Board",
+  "name": "NGA-SmartBoard",
   "description": "Infinite collaborative whiteboard",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

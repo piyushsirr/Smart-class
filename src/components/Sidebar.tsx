@@ -282,7 +282,7 @@ export function Sidebar({
       </div>
       
       <div className="p-3 border-t border-gray-800 text-[10px] text-gray-500 text-center shrink-0">
-        InfinityBoard Web Environment v2.0<br/>
+        NGA-SmartBoard Web Environment v2.0<br/>
         Cloud sync disabled in local mode
       </div>
     </div>

@@ -6,6 +6,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [
       react(), 
       tailwindcss(),
@@ -16,8 +17,8 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 5000000 // 5MB
         },
         manifest: {
-          name: 'Infinity Board',
-          short_name: 'InfinityBoard',
+          name: 'NGA-SmartBoard',
+          short_name: 'NGA-SmartBoard',
           description: 'Infinite collaborative whiteboard',
           theme_color: '#000000',
           background_color: '#000000',
