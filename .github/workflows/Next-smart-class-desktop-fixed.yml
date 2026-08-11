@@ -1,0 +1,604 @@
+name: Smart Class APK and Windows Fixed Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ============================================================
+  # ANDROID
+  # ============================================================
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Verify Java
+        run: |
+          java -version
+          javac -version
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Smart Class
+        run: npm run build
+
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Initialize Capacitor
+        run: |
+          npx cap init "Smart Class" "com.piyush.smartclass" --web-dir dist
+
+      - name: Add Android
+        run: |
+          npx cap add android
+
+      - name: Sync Android
+        run: |
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Prepare APK
+        run: |
+          mkdir -p apk-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             apk-output/Smart-Class.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart-Class-APK
+          path: apk-output/Smart-Class.apk
+          if-no-files-found: error
+
+
+  # ============================================================
+  # WINDOWS
+  # ============================================================
+
+  build-windows:
+    name: Build Windows EXE Fixed
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Smart Class
+        run: npm run build
+
+      - name: Copy web build
+        shell: pwsh
+        run: |
+          if (Test-Path "web-dist") {
+            Remove-Item "web-dist" -Recurse -Force
+          }
+
+          Copy-Item "dist" "web-dist" -Recurse
+
+      - name: Install Electron
+        run: |
+          npm install --save-dev electron electron-builder
+
+      # ========================================================
+      # ELECTRON MAIN PROCESS
+      #
+      # IMPORTANT:
+      # The application is served through localhost instead of
+      # file:// so Vite absolute assets work correctly.
+      # ========================================================
+
+      - name: Create Electron main process
+        shell: pwsh
+        run: |
+          @'
+          const {
+            app,
+            BrowserWindow
+          } = require('electron');
+
+          const http = require('http');
+          const fs = require('fs');
+          const path = require('path');
+
+          let server;
+
+          const webRoot = path.join(
+            __dirname,
+            'web-dist'
+          );
+
+          function getMimeType(filePath) {
+
+            const ext = path.extname(filePath)
+              .toLowerCase();
+
+            const types = {
+
+              '.html': 'text/html; charset=utf-8',
+
+              '.js': 'application/javascript; charset=utf-8',
+
+              '.mjs': 'application/javascript; charset=utf-8',
+
+              '.css': 'text/css; charset=utf-8',
+
+              '.json': 'application/json; charset=utf-8',
+
+              '.png': 'image/png',
+
+              '.jpg': 'image/jpeg',
+
+              '.jpeg': 'image/jpeg',
+
+              '.gif': 'image/gif',
+
+              '.svg': 'image/svg+xml',
+
+              '.ico': 'image/x-icon',
+
+              '.webp': 'image/webp',
+
+              '.woff': 'font/woff',
+
+              '.woff2': 'font/woff2',
+
+              '.ttf': 'font/ttf',
+
+              '.mp3': 'audio/mpeg',
+
+              '.wav': 'audio/wav',
+
+              '.mp4': 'video/mp4',
+
+              '.webm': 'video/webm',
+
+              '.txt': 'text/plain; charset=utf-8'
+
+            };
+
+            return types[ext] ||
+              'application/octet-stream';
+
+          }
+
+          function startServer() {
+
+            return new Promise((resolve, reject) => {
+
+              server = http.createServer(
+                (request, response) => {
+
+                  let requestPath;
+
+                  try {
+
+                    requestPath =
+                      decodeURIComponent(
+                        request.url.split('?')[0]
+                      );
+
+                  } catch {
+
+                    response.writeHead(400);
+                    response.end('Bad request');
+                    return;
+
+                  }
+
+                  if (
+                    !requestPath ||
+                    requestPath === '/'
+                  ) {
+                    requestPath = '/index.html';
+                  }
+
+                  let filePath =
+                    path.join(
+                      webRoot,
+                      requestPath
+                    );
+
+                  /*
+                   * Prevent directory traversal.
+                   */
+
+                  if (
+                    !filePath.startsWith(
+                      path.resolve(webRoot)
+                    )
+                  ) {
+
+                    response.writeHead(403);
+                    response.end('Forbidden');
+                    return;
+
+                  }
+
+                  /*
+                   * If requested file does not exist,
+                   * serve index.html.
+                   *
+                   * This also supports SPA routes.
+                   */
+
+                  if (
+                    !fs.existsSync(filePath) ||
+                    fs.statSync(filePath).isDirectory()
+                  ) {
+
+                    filePath =
+                      path.join(
+                        webRoot,
+                        'index.html'
+                      );
+
+                  }
+
+                  fs.readFile(
+                    filePath,
+                    (error, data) => {
+
+                      if (error) {
+
+                        response.writeHead(
+                          500,
+                          {
+                            'Content-Type':
+                              'text/plain'
+                          }
+                        );
+
+                        response.end(
+                          'Unable to load Smart Class.'
+                        );
+
+                        return;
+                      }
+
+                      response.writeHead(
+                        200,
+                        {
+                          'Content-Type':
+                            getMimeType(filePath),
+
+                          'Cache-Control':
+                            'no-cache'
+                        }
+                      );
+
+                      response.end(data);
+
+                    }
+                  );
+
+                }
+              );
+
+              server.listen(
+                0,
+                '127.0.0.1',
+                () => {
+
+                  const address =
+                    server.address();
+
+                  const port =
+                    address.port;
+
+                  resolve(port);
+
+                }
+              );
+
+              server.on(
+                'error',
+                reject
+              );
+
+            });
+
+          }
+
+          async function createWindow() {
+
+            const port =
+              await startServer();
+
+            const win =
+              new BrowserWindow({
+
+                width: 1440,
+
+                height: 900,
+
+                minWidth: 900,
+
+                minHeight: 600,
+
+                backgroundColor: '#050505',
+
+                autoHideMenuBar: true,
+
+                show: false,
+
+                webPreferences: {
+
+                  contextIsolation: true,
+
+                  nodeIntegration: false,
+
+                  sandbox: true
+
+                }
+
+              });
+
+            win.once(
+              'ready-to-show',
+              () => {
+
+                win.show();
+
+              }
+            );
+
+            win.webContents.on(
+              'did-fail-load',
+              (
+                event,
+                errorCode,
+                errorDescription,
+                validatedURL
+              ) => {
+
+                console.error(
+                  'Smart Class failed to load:',
+                  errorCode,
+                  errorDescription,
+                  validatedURL
+                );
+
+              }
+            );
+
+            await win.loadURL(
+              `http://127.0.0.1:${port}/`
+            );
+
+          }
+
+          app.whenReady().then(
+            async () => {
+
+              try {
+
+                await createWindow();
+
+              } catch (error) {
+
+                console.error(
+                  'Unable to start Smart Class:',
+                  error
+                );
+
+              }
+
+            }
+          );
+
+          app.on(
+            'window-all-closed',
+            () => {
+
+              if (server) {
+
+                server.close();
+
+              }
+
+              if (
+                process.platform !== 'darwin'
+              ) {
+
+                app.quit();
+
+              }
+
+            }
+          );
+
+          app.on(
+            'before-quit',
+            () => {
+
+              if (server) {
+
+                server.close();
+
+              }
+
+            }
+          );
+          '@ | Out-File `
+            -FilePath electron-main.cjs `
+            -Encoding utf8
+
+      # ========================================================
+      # ELECTRON CONFIGURATION
+      # ========================================================
+
+      - name: Create Electron configuration
+        shell: pwsh
+        run: |
+          @'
+          {
+            "name": "smart-class-desktop",
+            "version": "1.0.0",
+            "description": "Smart Class",
+            "main": "electron-main.cjs",
+
+            "scripts": {
+              "start": "electron .",
+              "build:windows": "electron-builder --win --publish never"
+            },
+
+            "build": {
+
+              "appId": "com.piyush.smartclass",
+
+              "productName": "Smart Class",
+
+              "directories": {
+                "output": "release"
+              },
+
+              "files": [
+                "web-dist/**/*",
+                "electron-main.cjs",
+                "package.json"
+              ],
+
+              "win": {
+
+                "target": [
+
+                  {
+                    "target": "nsis",
+                    "arch": [
+                      "x64"
+                    ]
+                  },
+
+                  {
+                    "target": "portable",
+                    "arch": [
+                      "x64"
+                    ]
+                  }
+
+                ]
+
+              },
+
+              "nsis": {
+
+                "oneClick": false,
+
+                "allowToChangeInstallationDirectory": true,
+
+                "createDesktopShortcut": true,
+
+                "createStartMenuShortcut": true,
+
+                "shortcutName": "Smart Class"
+
+              }
+
+            }
+
+          }
+          '@ | Out-File `
+            -FilePath electron-package.json `
+            -Encoding utf8
+
+      # ========================================================
+      # PREPARE ELECTRON PACKAGE
+      # ========================================================
+
+      - name: Prepare Electron package
+        shell: pwsh
+        run: |
+          Copy-Item `
+            electron-package.json `
+            package.json `
+            -Force
+
+      # ========================================================
+      # BUILD WINDOWS
+      # ========================================================
+
+      - name: Build Windows application
+        run: |
+          npx electron-builder --win --publish never
+
+      # ========================================================
+      # VERIFY
+      # ========================================================
+
+      - name: Verify Windows build
+        shell: pwsh
+        run: |
+
+          if (!(Test-Path "release")) {
+
+            Write-Error `
+              "Windows release directory was not created."
+
+            exit 1
+
+          }
+
+          Write-Host ""
+          Write-Host "======================================"
+          Write-Host "SMART CLASS WINDOWS BUILD"
+          Write-Host "======================================"
+          Write-Host ""
+
+          Get-ChildItem `
+            "release" `
+            -Recurse
+
+      # ========================================================
+      # UPLOAD
+      # ========================================================
+
+      - name: Upload Windows applications
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart-Class-Windows-Fixed
+          path: release/*.exe
+          if-no-files-found: error
